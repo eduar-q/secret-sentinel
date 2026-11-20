@@ -7,15 +7,22 @@ def detect_secrets(line: str) -> list[dict[str, str]]:
     """
     Compara una línea de texto con las reglas de Secret Sentinel.
 
-    Devuelve el tipo de coincidencia y su gravedad, sin revelar
-    el contenido que podría ser una credencial.
+    Ignora líneas vacías y comentarios completos.
+    Devuelve el tipo de coincidencia y su gravedad,
+    sin revelar el contenido que podría ser una credencial.
     """
+
+    # No analizamos líneas vacías ni comentarios de Python,
+    # archivos .env y otros formatos que utilizan #.
+    stripped_line = line.lstrip()
+
+    if not stripped_line or stripped_line.startswith("#"):
+        return []
+
     findings = []
 
-    # Cada regla representa un tipo de credencial que queremos identificar.
+    # Comparamos la línea con todas las reglas disponibles.
     for rule in RULES:
-
-        # Si el patrón aparece en la línea, registramos el hallazgo.
         if re.search(rule["pattern"], line):
             findings.append({
                 "name": rule["name"],
