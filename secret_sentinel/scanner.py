@@ -4,8 +4,8 @@ from pathlib import Path
 from .detector import detect_secrets
 
 
-# Estas carpetas suelen contener dependencias o archivos generados.
-# No necesitamos revisarlas para buscar credenciales del proyecto.
+# Carpetas que contienen dependencias, archivos de Git
+# o contenido generado que no necesitamos analizar.
 EXCLUDED_DIRS = {
     ".git",
     ".venv",
@@ -18,42 +18,64 @@ EXCLUDED_DIRS = {
 
 def scan_directory(root: str | Path) -> list[dict]:
     """
-    Recorre un directorio y busca posibles credenciales en sus archivos.
+    Recorre un directorio y busca posibles credenciales.
 
-    Cada hallazgo incluye la ruta, la línea, el tipo de coincidencia
-    y su gravedad. El contenido sensible no se guarda en el resultado.
+    No sigue enlaces simbólicos, no analiza archivos binarios
+    y continúa el escaneo cuando encuentra archivos inaccesibles.
     """
-    root_path = Path(root).resolve()
 
-    # Evitamos iniciar un escaneo sobre una ruta inexistente o inválida.
+    input_path = Path(root).expanduser()
+
+    # No permitimos que la carpeta raíz sea un enlace simbólico.
+    if input_path.is_symlink():
+        raise ValueError("El directorio indicado no puede ser un enlace simbólico.")
+
+    try:
+        root_path = input_path.resolve(strict=True)
+    except (OSError, RuntimeError):
+        raise ValueError(
+            f"El directorio no existe o no se puede resolver: {input_path}"
+        )
+
     if not root_path.is_dir():
         raise ValueError(f"El directorio no existe: {root_path}")
 
     findings = []
 
-    # os.walk permite recorrer las carpetas sin entrar en las excluidas.
-    for current_dir, directory_names, file_names in os.walk(root_path):
+    # Recorremos los directorios sin seguir enlaces simbólicos.
+    for current_dir, directory_names, file_names in os.walk(
+        root_path,
+        topdown=True,
+        followlinks=False
+    ):
+        current_path = Path(current_dir)
 
-        # Filtramos las carpetas antes de continuar el recorrido.
+        # Excluimos las carpetas configuradas y los enlaces simbólicos.
         directory_names[:] = [
             name for name in directory_names
             if name not in EXCLUDED_DIRS
+            and not (current_path / name).is_symlink()
         ]
 
         for file_name in file_names:
-            file_path = Path(current_dir) / file_name
+            file_path = current_path / file_name
 
             try:
-                # Comprobamos si parece un archivo binario antes de leerlo
-                # como texto, para evitar analizar imágenes y ejecutables.
+                # Ignoramos enlaces simbólicos y elementos que no sean
+                # archivos regulares.
+                if file_path.is_symlink() or not file_path.is_file():
+                    continue
+
+                # Comprobamos una muestra del archivo para identificar
+                # contenido binario antes de tratarlo como texto.
                 with file_path.open("rb") as file:
-                    sample = file.read(1024)
+                    sample = file.read(8192)
 
                 if b"\x00" in sample:
                     continue
 
-                # Revisamos el archivo línea por línea para conocer
-                # exactamente dónde aparece cada posible credencial.
+                # Leemos línea por línea para mantener un consumo
+                # de memoria reducido incluso con archivos grandes.
                 with file_path.open(
                     "r",
                     encoding="utf-8",
@@ -65,14 +87,16 @@ def scan_directory(root: str | Path) -> list[dict]:
 
                         for match in matches:
                             findings.append({
-                                "file": str(file_path.relative_to(root_path)),
+                                "file": str(
+                                    file_path.relative_to(root_path)
+                                ),
                                 "line": line_number,
                                 "name": match["name"],
                                 "severity": match["severity"]
                             })
 
             except OSError:
-                # Un archivo inaccesible no debe detener todo el escaneo.
+                # Un archivo inaccesible no debe detener todo el análisis.
                 continue
 
     return findings

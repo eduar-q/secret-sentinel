@@ -9,11 +9,15 @@ Busca patrones asociados a claves API, contraseñas, tokens de acceso y claves p
 ## Características
 
 - Escaneo recursivo de archivos y directorios.
-- Detección de patrones habituales de credenciales.
-- Identificación del archivo y número de línea.
-- Clasificación orientativa de la gravedad.
+- Detección de credenciales genéricas.
+- Reconocimiento de patrones de AWS, GitHub, Stripe y Slack.
+- Detección de contraseñas con nombres como DB_PASSWORD y MYSQL_PASSWORD.
+- Identificación de marcadores de claves privadas.
+- Detección de archivos y líneas donde aparecen posibles credenciales.
+- Clasificación orientativa de gravedad.
 - Exclusión de directorios como `.venv`, `.git` y `__pycache__`.
-- Resultados sin revelar el contenido de las posibles credenciales.
+- Omisión de archivos binarios y enlaces simbólicos.
+- Resultados sin revelar los valores detectados.
 - Códigos de salida para facilitar su integración con otros programas.
 
 ## Tecnologías
@@ -116,16 +120,21 @@ Para ejecutar todas las pruebas:
 python -m unittest discover -s tests -v
 ```
 
-Las pruebas actuales comprueban:
+Las pruebas automáticas comprueban:
 
-- Reconocimiento de los patrones definidos.
-- Ausencia de alertas ante texto normal.
-- Protección de los valores detectados en los resultados.
-- Identificación de credenciales dentro de archivos.
-- Exclusión de directorios configurados.
-- Comportamiento con archivos sin coincidencias.
-- Detección de credenciales con y sin comillas.
-- Exclusión de accesos a variables de entorno mediante `os.getenv()` y `os.environ[]` para evitar falsos positivos.
+- Detección de credenciales genéricas con y sin comillas.
+- Reconocimiento de credenciales de AWS, GitHub, Stripe y Slack.
+- Detección de contraseñas con prefijos habituales.
+- Reconocimiento de distintos encabezados de claves privadas.
+- Exclusión de variables de entorno y referencias dinámicas.
+- Ausencia de alertas ante valores públicos y texto normal.
+- Protección de los valores detectados.
+- Recorrido de subdirectorios y exclusión de carpetas configuradas.
+- Comportamiento con archivos binarios y enlaces simbólicos.
+- Detección de credenciales en archivos completos.
+- Funcionamiento de los códigos de salida de la terminal.
+
+**Estado de desarrollo:** 26 pruebas automáticas superadas.
 
 **Estado de desarrollo:** 9 pruebas automáticas superadas.
 
@@ -135,15 +144,17 @@ Las pruebas actuales comprueban:
 secret-sentinel/
 │
 ├── secret_sentinel/
-│   ├── __init__.py
-│   ├── __main__.py
+│   ├── init.py
+│   ├── main.py
 │   ├── scanner.py
 │   ├── detector.py
 │   └── rules.py
 │
 ├── tests/
+│   ├── test_cli.py
 │   ├── test_detector.py
 │   ├── test_scanner.py
+│   │
 │   └── samples/
 │       ├── safe_file.py
 │       └── fake_secrets.py
@@ -152,6 +163,7 @@ secret-sentinel/
 ├── README.md
 ├── LICENSE
 └── requirements.txt
+
 ```
 
 ## **Limitaciones**
