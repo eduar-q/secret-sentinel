@@ -124,8 +124,10 @@ Las pruebas actuales comprueban:
 - Identificación de credenciales dentro de archivos.
 - Exclusión de directorios configurados.
 - Comportamiento con archivos sin coincidencias.
+- Detección de credenciales con y sin comillas.
+- Exclusión de accesos a variables de entorno mediante `os.getenv()` y `os.environ[]` para evitar falsos positivos.
 
-**Estado de desarrollo:** 6 pruebas automáticas superadas en la primera versión.
+**Estado de desarrollo:** 9 pruebas automáticas superadas.
 
 ## **Estructura del proyecto**
 

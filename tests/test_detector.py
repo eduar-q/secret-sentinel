@@ -38,6 +38,37 @@ class TestSecretDetector(unittest.TestCase):
 
         self.assertNotIn(secret, str(findings))
 
+    def test_detects_unquoted_credentials(self):
+        # Comprueba que también se reconocen valores sin comillas.
+        examples = [
+            ("api" + "_key=DEMO_API_KEY_123456789", "API Key"),
+            ("pass" + "word=FAKE_PASSWORD_123456", "Password"),
+            ("access" + "_token=DEMO_ACCESS_TOKEN_987654321", "Access Token")
+        ]
+
+        for line, expected_name in examples:
+            with self.subTest(secret_type=expected_name):
+                findings = detect_secrets(line)
+
+                self.assertTrue(findings)
+                self.assertEqual(findings[0]["name"], expected_name)
+
+    def test_ignores_environment_variable_lookup(self):
+        # Obtener una contraseña mediante getenv no es una asignación literal.
+        line = "pass" + 'word = os.getenv("DB_PASSWORD")'
+
+        findings = detect_secrets(line)
+
+        self.assertEqual(findings, [])
+
+    def test_ignores_environment_mapping(self):
+        # Comprueba el acceso mediante os.environ["..."].
+        line = "pass" + 'word = os.environ["DB_' + "PASSWORD" + '"]'
+
+        findings = detect_secrets(line)
+
+        self.assertEqual(findings, [])
+
 
 if __name__ == "__main__":
     unittest.main()
