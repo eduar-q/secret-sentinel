@@ -171,5 +171,3 @@ La ausencia de alertas no garantiza que un proyecto sea seguro.
 Desarrollar una herramienta ligera y accesible que permita revisar archivos y proyectos en busca de posibles credenciales expuestas antes de compartirlos.
 
 Es un proyecto de aprendizaje y aplicación práctica de Python y seguridad defensiva.
-
-```
